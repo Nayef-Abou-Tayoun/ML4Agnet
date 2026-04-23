@@ -153,17 +153,13 @@ async def mcp_endpoint(request: Request):
 
 
 @app.get("/sse")
-async def sse_endpoint(request: Request):
-    """Server-Sent Events endpoint for MCP streaming.
-    
-    This endpoint provides bidirectional MCP communication over SSE.
-    The client sends requests via POST to /mcp, and receives responses via this SSE stream.
-    """
+async def sse_get_endpoint(request: Request):
+    """Server-Sent Events GET endpoint for MCP streaming connection."""
     async def event_generator():
         try:
             # Send initial connection message
             logger.info("SSE connection established")
-            yield f"data: {json.dumps({'type': 'endpoint', 'endpoint': '/mcp'})}\n\n"
+            yield f"data: {json.dumps({'type': 'endpoint', 'endpoint': '/sse'})}\n\n"
             
             # Keep connection alive with periodic pings
             while True:
@@ -184,6 +180,40 @@ async def sse_endpoint(request: Request):
             "Access-Control-Allow-Origin": "*"
         }
     )
+
+
+@app.post("/sse")
+async def sse_post_endpoint(request: Request):
+    """Server-Sent Events POST endpoint for MCP JSON-RPC requests.
+    
+    This handles MCP protocol requests sent to the SSE endpoint.
+    """
+    body: Optional[Dict[str, Any]] = None
+    try:
+        body = await request.json()
+        if body:
+            logger.info(f"SSE MCP request: {body.get('method')}")
+            response = await handle_mcp_request(body)
+            return JSONResponse(content=response)
+        else:
+            return JSONResponse(
+                content={
+                    "jsonrpc": "2.0",
+                    "error": {"code": -32700, "message": "Parse error"},
+                    "id": None
+                },
+                status_code=400
+            )
+    except Exception as e:
+        logger.error(f"SSE MCP error: {e}", exc_info=True)
+        return JSONResponse(
+            content={
+                "jsonrpc": "2.0",
+                "error": {"code": -32603, "message": f"Internal error: {str(e)}"},
+                "id": body.get("id") if body else None
+            },
+            status_code=500
+        )
 
 
 @app.get("/mcp/tools")
