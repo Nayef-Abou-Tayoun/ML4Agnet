@@ -428,22 +428,23 @@ async def handle_mcp_tool_call(request_id: Any, params: Dict[str, Any]) -> Dict[
             "id": request_id
         }
     
-    if not tool_name.startswith("predict_"):
-        return {
-            "jsonrpc": "2.0",
-            "error": {"code": -32602, "message": f"Invalid tool: {tool_name}"},
-            "id": request_id
-        }
-    
-    model_name = tool_name.replace("predict_", "").replace("_", "-")
-    
+    # Extract model name from tool name
+    # Tool names are in format: provider_model_name (e.g., "watsonx_demand_forecasting_ml")
     models = await registry.list_all_models()
-    model = next((m for m in models if m.name == model_name), None)
+    
+    # Try to find model by matching tool name pattern
+    model = None
+    for m in models:
+        # Tool name format: {provider}_{model_name_with_underscores}
+        expected_tool_name = f"{m.provider}_{m.name.replace('-', '_')}"
+        if tool_name == expected_tool_name:
+            model = m
+            break
     
     if not model:
         return {
             "jsonrpc": "2.0",
-            "error": {"code": -32602, "message": f"Model not found: {model_name}"},
+            "error": {"code": -32602, "message": f"Model not found for tool: {tool_name}"},
             "id": request_id
         }
     
