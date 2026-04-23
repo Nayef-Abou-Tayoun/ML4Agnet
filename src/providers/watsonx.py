@@ -253,10 +253,34 @@ class WatsonxProvider(MLProvider):
                         if parameters:
                             scoring_payload["parameters"] = parameters
                     else:
-                        # Otherwise wrap it
-                        scoring_payload = {"input_data": [input_data]}
+                        # List of dicts without fields/values - need to convert to watsonx format
+                        # Extract field names from first dict
+                        if isinstance(input_data[0], dict):
+                            fields = list(input_data[0].keys())
+                            values = [[item[field] for field in fields] for item in input_data]
+                            scoring_payload = {
+                                "input_data": [{
+                                    "fields": fields,
+                                    "values": values
+                                }]
+                            }
+                        else:
+                            # Otherwise wrap it
+                            scoring_payload = {"input_data": [input_data]}
                         if parameters:
                             scoring_payload["parameters"] = parameters
+                elif isinstance(input_data, dict):
+                    # Single dict - convert to watsonx format
+                    fields = list(input_data.keys())
+                    values = [[input_data[field] for field in fields]]
+                    scoring_payload = {
+                        "input_data": [{
+                            "fields": fields,
+                            "values": values
+                        }]
+                    }
+                    if parameters:
+                        scoring_payload["parameters"] = parameters
                 else:
                     # Single item, wrap it
                     scoring_payload = {"input_data": [input_data]}
