@@ -65,32 +65,43 @@ class ModelMetadata:
         required_fields_list = []
         
         if custom_schema and custom_schema.get("fields"):
-            # Build schema from custom field definitions
-            required_fields = []
+            # Build field information from custom schema
+            field_names = [field["name"] for field in custom_schema["fields"]]
+            field_info = "\n".join([
+                f"  - {field['name']} ({field['type']}): {field.get('description', 'No description')}"
+                for field in custom_schema["fields"]
+            ])
             
-            for field in custom_schema["fields"]:
-                field_name = field["name"]
-                field_type = field["type"]
-                
-                # Map custom types to JSON schema types
-                type_mapping = {
-                    "string": "string",
-                    "integer": "integer",
-                    "float": "number",
-                    "boolean": "boolean"
+            # Tell WxO to send data in watsonx.ai format with fields and values
+            properties = {
+                "input_data": {
+                    "type": "object",
+                    "description": f"Input data in watsonx.ai format. Required fields:\n{field_info}",
+                    "properties": {
+                        "fields": {
+                            "type": "array",
+                            "description": f"Array of field names. Must be: {field_names}",
+                            "items": {"type": "string"}
+                        },
+                        "values": {
+                            "type": "array",
+                            "description": f"Array of value arrays. Each inner array must have {len(field_names)} values in the same order as fields.",
+                            "items": {
+                                "type": "array",
+                                "items": {
+                                    "oneOf": [
+                                        {"type": "number"},
+                                        {"type": "string"},
+                                        {"type": "boolean"}
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "required": ["fields", "values"]
                 }
-                
-                field_properties[field_name] = {
-                    "type": type_mapping.get(field_type, "string"),
-                    "description": field.get("description", f"{field_name} field")
-                }
-                
-                if field.get("required", False):
-                    required_fields.append(field_name)
-            
-            # For custom schemas, use single object instead of array
-            properties = field_properties
-            required_fields_list = required_fields  # Use the list we just built
+            }
+            required_fields_list = ["input_data"]
         else:
             # Default schema - accepts full watsonx.ai input_data structure
             properties = {
@@ -126,10 +137,10 @@ class ModelMetadata:
         
         # Build the final schema
         if custom_schema and custom_schema.get("fields"):
-            # Custom schema: direct field properties (single object)
+            # Custom schema: watsonx.ai format with input_data
             return {
                 "name": f"{self.provider}_{self.name.lower().replace(' ', '_').replace('-', '_')}",
-                "description": self.description or f"{self.model_type.value} model: {self.name}",
+                "description": self.description or f"{self.model_type.value} model: {self.name}. Expects watsonx.ai format with 'input_data' containing 'fields' and 'values' arrays.",
                 "inputSchema": {
                     "type": "object",
                     "properties": properties,
