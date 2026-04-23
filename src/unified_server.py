@@ -153,16 +153,26 @@ async def mcp_endpoint(request: Request):
 
 
 @app.get("/sse")
-async def sse_endpoint():
-    """Server-Sent Events endpoint for MCP streaming."""
+async def sse_endpoint(request: Request):
+    """Server-Sent Events endpoint for MCP streaming.
+    
+    This endpoint provides bidirectional MCP communication over SSE.
+    The client sends requests via POST to /mcp, and receives responses via this SSE stream.
+    """
     async def event_generator():
         try:
-            yield f"data: {json.dumps({'type': 'connected', 'server': 'ml-registry'})}\n\n"
+            # Send initial connection message
+            logger.info("SSE connection established")
+            yield f"data: {json.dumps({'type': 'endpoint', 'endpoint': '/mcp'})}\n\n"
+            
+            # Keep connection alive with periodic pings
             while True:
                 await asyncio.sleep(30)
                 yield f"data: {json.dumps({'type': 'ping'})}\n\n"
         except asyncio.CancelledError:
             logger.info("SSE connection closed")
+        except Exception as e:
+            logger.error(f"SSE error: {e}", exc_info=True)
     
     return StreamingResponse(
         event_generator(),
@@ -170,7 +180,8 @@ async def sse_endpoint():
         headers={
             "Cache-Control": "no-cache",
             "Connection": "keep-alive",
-            "X-Accel-Buffering": "no"
+            "X-Accel-Buffering": "no",
+            "Access-Control-Allow-Origin": "*"
         }
     )
 
@@ -362,6 +373,10 @@ async def handle_mcp_request(request: Dict[str, Any]) -> Dict[str, Any]:
     method = request.get("method")
     params = request.get("params", {})
     request_id = request.get("id")
+    
+    logger.info(f"MCP request: {method}")
+    if method == "tools/call":
+        logger.info(f"Tool call params: {json.dumps(params, indent=2)}")
     
     try:
         if method == "initialize":

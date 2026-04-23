@@ -23,12 +23,14 @@ Add this to your watsonx Orchestrate MCP servers configuration:
       "command": "uvx",
       "args": [
         "mcp-proxy",
-        "https://mlregistry12.27jid12fsm9n.us-south.codeengine.appdomain.cloud/mcp"
+        "https://mlregistry12.27jid12fsm9n.us-south.codeengine.appdomain.cloud/sse"
       ]
     }
   }
 }
 ```
+
+**Note**: Use `/sse` endpoint for proper SSE transport with mcp-proxy. The `/mcp` endpoint is for direct HTTP POST requests.
 
 ### Available Tools
 
