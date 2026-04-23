@@ -460,6 +460,8 @@ async def web_ui():
     </body>
     </html>
     """
+    
+    return HTMLResponse(content=html)
 
 @app.get("/schemas", response_class=HTMLResponse)
 async def schema_editor_page(request: Request):
