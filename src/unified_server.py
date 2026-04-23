@@ -21,6 +21,7 @@ import json
 from .config import settings
 from .registry import ModelRegistry
 from .mcp.tools import generate_mcp_tools
+from .schema_manager import get_schema_manager, ModelSchema
 
 # Configure logging
 logging.basicConfig(
@@ -229,6 +230,73 @@ async def mcp_tools_list():
 
 
 # ============================================================================
+# SCHEMA MANAGEMENT ENDPOINTS
+# ============================================================================
+
+@app.get("/api/schemas")
+async def list_schemas():
+    """List all custom model schemas."""
+    try:
+        schema_mgr = get_schema_manager()
+        schemas = schema_mgr.list_schemas()
+        return {
+            "schemas": [s.model_dump() for s in schemas],
+            "count": len(schemas)
+        }
+    except Exception as e:
+        logger.error(f"Error listing schemas: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/schemas/{model_id}")
+async def get_schema(model_id: str):
+    """Get schema for a specific model."""
+    try:
+        schema_mgr = get_schema_manager()
+        schema = schema_mgr.get_schema(model_id)
+        if schema:
+            return schema.model_dump()
+        raise HTTPException(status_code=404, detail="Schema not found")
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting schema: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/schemas")
+async def create_or_update_schema(request: Request):
+    """Create or update a model schema."""
+    try:
+        data = await request.json()
+        schema_mgr = get_schema_manager()
+        schema = ModelSchema(**data)
+        success = schema_mgr.set_schema(schema)
+        if success:
+            return {"success": True, "schema": schema.model_dump()}
+        raise HTTPException(status_code=500, detail="Failed to save schema")
+    except Exception as e:
+        logger.error(f"Error saving schema: {e}", exc_info=True)
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.delete("/api/schemas/{model_id}")
+async def delete_schema(model_id: str):
+    """Delete a model schema."""
+    try:
+        schema_mgr = get_schema_manager()
+        success = schema_mgr.delete_schema(model_id)
+        if success:
+            return {"success": True, "message": "Schema deleted"}
+        raise HTTPException(status_code=404, detail="Schema not found")
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error deleting schema: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ============================================================================
 # REST API ENDPOINTS (for direct watsonx Orchestrate)
 # ============================================================================
 
@@ -323,7 +391,7 @@ async def predict(model_name: str, input_data: Dict[str, Any]):
 
 
 # ============================================================================
-# WEB UI ENDPOINT
+# WEB UI ENDPOINTS
 # ============================================================================
 
 @app.get("/ui", response_class=HTMLResponse)
@@ -380,8 +448,9 @@ async def web_ui():
         </div>
         
         <div class="integration">
-            <h2>📚 Documentation</h2>
+            <h2>📚 Documentation & Tools</h2>
             <ul>
+                <li><a href="/schemas">🔧 Schema Editor</a> - Define model input schemas</li>
                 <li><a href="/api/docs">Interactive API Documentation</a></li>
                 <li><a href="/api/openapi.json">OpenAPI Schema</a></li>
                 <li><a href="/health">Health Check</a></li>
@@ -391,7 +460,17 @@ async def web_ui():
     </body>
     </html>
     """
-    return HTMLResponse(content=html)
+
+@app.get("/schemas", response_class=HTMLResponse)
+async def schema_editor_page(request: Request):
+    """Schema editor UI page."""
+    from .schema_ui import get_schema_editor_html
+    try:
+        html = await get_schema_editor_html(request, registry)
+        return HTMLResponse(content=html)
+    except Exception as e:
+        logger.error(f"Error rendering schema editor: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 # ============================================================================

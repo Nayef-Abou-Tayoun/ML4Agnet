@@ -41,11 +41,36 @@ def generate_mcp_tools(models: List[ModelMetadata]) -> List[Dict[str, Any]]:
     Returns:
         List of MCP tool schemas
     """
+    from ..schema_manager import get_schema_manager
+    
     tools = []
+    schema_mgr = get_schema_manager()
     
     for model in models:
         try:
-            tool = model.to_mcp_tool_schema()
+            # Check if there's a custom schema for this model
+            custom_schema_obj = schema_mgr.get_schema(model.id)
+            if custom_schema_obj:
+                logger.info(f"Using custom schema for model: {model.name}")
+                # Convert ModelSchema to dict
+                custom_schema_dict = {
+                    "model_id": custom_schema_obj.model_id,
+                    "model_name": custom_schema_obj.model_name,
+                    "fields": [
+                        {
+                            "name": f.name,
+                            "type": f.type,
+                            "required": f.required,
+                            "description": f.description
+                        }
+                        for f in custom_schema_obj.fields
+                    ]
+                }
+                tool = model.to_mcp_tool_schema(custom_schema=custom_schema_dict)
+            else:
+                logger.debug(f"Using default schema for model: {model.name}")
+                tool = model.to_mcp_tool_schema()
+            
             tools.append(tool)
             logger.debug(f"Generated MCP tool for model: {model.name}")
         except Exception as e:

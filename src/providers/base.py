@@ -51,49 +51,94 @@ class ModelMetadata:
     accuracy: Optional[float] = None
     latency_ms: Optional[float] = None
     
-    def to_mcp_tool_schema(self) -> Dict[str, Any]:
+    def to_mcp_tool_schema(self, custom_schema: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """Convert model metadata to MCP tool schema.
         
-        Accepts the full watsonx.ai input_data structure directly.
+        Args:
+            custom_schema: Optional custom schema from schema manager
+        
+        If custom_schema is provided, uses it to generate a more specific schema.
+        Otherwise, accepts the full watsonx.ai input_data structure directly.
         """
-        properties = {
-            "input_data": {
-                "type": "array",
-                "description": "Array of input data objects with fields and values",
-                "items": {
-                    "type": "object",
-                    "properties": {
-                        "fields": {
-                            "type": "array",
-                            "description": "Array of field names",
-                            "items": {"type": "string"}
-                        },
-                        "values": {
-                            "type": "array",
-                            "description": "Array of value arrays (one per row)",
-                            "items": {
+        # Check if we have a custom schema
+        if custom_schema and custom_schema.get("fields"):
+            # Build schema from custom field definitions
+            field_properties = {}
+            required_fields = []
+            
+            for field in custom_schema["fields"]:
+                field_name = field["name"]
+                field_type = field["type"]
+                
+                # Map custom types to JSON schema types
+                type_mapping = {
+                    "string": "string",
+                    "integer": "integer",
+                    "float": "number",
+                    "boolean": "boolean"
+                }
+                
+                field_properties[field_name] = {
+                    "type": type_mapping.get(field_type, "string"),
+                    "description": field.get("description", f"{field_name} field")
+                }
+                
+                if field.get("required", False):
+                    required_fields.append(field_name)
+            
+            properties = {
+                "input_data": {
+                    "type": "array",
+                    "description": "Array of input data objects",
+                    "items": {
+                        "type": "object",
+                        "properties": field_properties,
+                        "required": required_fields
+                    }
+                }
+            }
+        else:
+            # Default schema - accepts full watsonx.ai input_data structure
+            properties = {
+                "input_data": {
+                    "type": "array",
+                    "description": "Array of input data objects with fields and values",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "fields": {
                                 "type": "array",
+                                "description": "Array of field names",
+                                "items": {"type": "string"}
+                            },
+                            "values": {
+                                "type": "array",
+                                "description": "Array of value arrays (one per row)",
                                 "items": {
-                                    "oneOf": [
-                                        {"type": "number"},
-                                        {"type": "string"}
-                                    ]
+                                    "type": "array",
+                                    "items": {
+                                        "oneOf": [
+                                            {"type": "number"},
+                                            {"type": "string"}
+                                        ]
+                                    }
                                 }
                             }
-                        }
-                    },
-                    "required": ["fields", "values"]
-                }
-            },
-            "parameters": {
-                "type": "object",
-                "description": "Optional inference parameters",
-                "properties": {
-                    "timeout": {
-                        "type": "integer",
-                        "description": "Request timeout in seconds",
-                        "default": 30
+                        },
+                        "required": ["fields", "values"]
                     }
+                }
+            }
+        
+        # Add optional parameters
+        properties["parameters"] = {
+            "type": "object",
+            "description": "Optional inference parameters",
+            "properties": {
+                "timeout": {
+                    "type": "integer",
+                    "description": "Request timeout in seconds",
+                    "default": 30
                 }
             }
         }
