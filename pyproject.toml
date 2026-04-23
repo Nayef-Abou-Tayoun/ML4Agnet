@@ -1,0 +1,71 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ml-registry-mcp-server"
+version = "1.0.0"
+description = "MCP server for ML model registry with watsonx.ai integration"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+authors = [
+    {name = "Nayef Abou Tayoun", email = "nayef@example.com"}
+]
+keywords = ["mcp", "ml", "watsonx", "model-registry", "ai"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+
+dependencies = [
+    "mcp>=1.0.0",
+    "fastapi>=0.100.0",
+    "uvicorn>=0.23.0",
+    "pydantic>=2.0.0",
+    "pydantic-settings>=2.0.0",
+    "python-dotenv>=1.0.0",
+    "ibm-watsonx-ai>=1.0.0",
+    "httpx>=0.24.0",
+    "sse-starlette>=1.6.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-asyncio>=0.21.0",
+    "pytest-cov>=4.0.0",
+    "black>=23.0.0",
+    "ruff>=0.1.0",
+    "mypy>=1.0.0",
+]
+
+[project.scripts]
+ml-registry-mcp-server = "src.server:main"
+
+[project.urls]
+Homepage = "https://github.com/Nayef-Abou-Tayoun/ML4Agnet"
+Repository = "https://github.com/Nayef-Abou-Tayoun/ML4Agnet"
+Issues = "https://github.com/Nayef-Abou-Tayoun/ML4Agnet/issues"
+
+[tool.setuptools]
+packages = ["src", "src.mcp", "src.providers"]
+
+[tool.black]
+line-length = 100
+target-version = ['py310']
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.mypy]
+python_version = "3.10"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false
