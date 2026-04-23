@@ -57,51 +57,46 @@ class ModelMetadata:
         Args:
             custom_schema: Optional custom schema from schema manager
         
-        If custom_schema is provided, uses it to generate a more specific schema.
+        If custom_schema is provided, creates individual parameters for each field.
         Otherwise, accepts the full watsonx.ai input_data structure directly.
         """
-        # Check if we have a custom schema
-        field_properties = {}
+        properties = {}
         required_fields_list = []
         
         if custom_schema and custom_schema.get("fields"):
-            # Build field information from custom schema
-            field_names = [field["name"] for field in custom_schema["fields"]]
-            field_info = "\n".join([
-                f"  - {field['name']} ({field['type']}): {field.get('description', 'No description')}"
-                for field in custom_schema["fields"]
-            ])
+            # Custom schema: Create individual parameters for each field
+            for field in custom_schema["fields"]:
+                field_type = field["type"].lower()
+                
+                # Map field types to JSON schema types
+                if field_type in ["integer", "int"]:
+                    json_type = "integer"
+                elif field_type in ["float", "double", "number"]:
+                    json_type = "number"
+                elif field_type in ["boolean", "bool"]:
+                    json_type = "boolean"
+                elif field_type == "string":
+                    json_type = "string"
+                else:
+                    json_type = "string"  # Default to string
+                
+                properties[field["name"]] = {
+                    "type": json_type,
+                    "description": field.get("description", f"{field['name']} field")
+                }
+                
+                if field.get("required", False):
+                    required_fields_list.append(field["name"])
             
-            # Tell WxO to send data in watsonx.ai format with fields and values
-            properties = {
-                "input_data": {
+            return {
+                "name": f"{self.provider}_{self.name.lower().replace(' ', '_').replace('-', '_')}",
+                "description": self.description or f"{self.model_type.value} model: {self.name}",
+                "inputSchema": {
                     "type": "object",
-                    "description": f"Input data in watsonx.ai format. Required fields:\n{field_info}",
-                    "properties": {
-                        "fields": {
-                            "type": "array",
-                            "description": f"Array of field names. Must be: {field_names}",
-                            "items": {"type": "string"}
-                        },
-                        "values": {
-                            "type": "array",
-                            "description": f"Array of value arrays. Each inner array must have {len(field_names)} values in the same order as fields.",
-                            "items": {
-                                "type": "array",
-                                "items": {
-                                    "oneOf": [
-                                        {"type": "number"},
-                                        {"type": "string"},
-                                        {"type": "boolean"}
-                                    ]
-                                }
-                            }
-                        }
-                    },
-                    "required": ["fields", "values"]
+                    "properties": properties,
+                    "required": required_fields_list
                 }
             }
-            required_fields_list = ["input_data"]
         else:
             # Default schema - accepts full watsonx.ai input_data structure
             properties = {
@@ -134,21 +129,8 @@ class ModelMetadata:
                     }
                 }
             }
-        
-        # Build the final schema
-        if custom_schema and custom_schema.get("fields"):
-            # Custom schema: watsonx.ai format with input_data
-            return {
-                "name": f"{self.provider}_{self.name.lower().replace(' ', '_').replace('-', '_')}",
-                "description": self.description or f"{self.model_type.value} model: {self.name}. Expects watsonx.ai format with 'input_data' containing 'fields' and 'values' arrays.",
-                "inputSchema": {
-                    "type": "object",
-                    "properties": properties,
-                    "required": required_fields_list
-                }
-            }
-        else:
-            # Default schema: array-based with optional parameters
+            
+            # Add optional parameters
             properties["parameters"] = {
                 "type": "object",
                 "description": "Optional inference parameters",
