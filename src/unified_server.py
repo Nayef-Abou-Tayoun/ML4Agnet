@@ -395,73 +395,363 @@ async def predict(model_name: str, input_data: Dict[str, Any]):
 # ============================================================================
 
 @app.get("/ui", response_class=HTMLResponse)
-async def web_ui():
-    """Simple web UI showing integration options."""
-    models = await registry.list_all_models()
-    models_count = len(models)
+async def web_ui(request: Request):
+    """Full dashboard UI with model discovery and management."""
+    try:
+        models = await registry.list_all_models()
+        mcp_tools = generate_mcp_tools(models)
+        provider_stats = registry.get_provider_stats()
+        
+        total_models = len(models)
+        total_providers = len(registry.providers)
+        model_types = len(set(m.model_type.value for m in models)) if models else 0
+        
+        html_content = f"""
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>ML Model Registry</title>
+            <style>
+                * {{
+                    margin: 0;
+                    padding: 0;
+                    box-sizing: border-box;
+                }}
+                body {{
+                    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+                    background: #f5f5f5;
+                    padding: 20px;
+                }}
+                .container {{
+                    max-width: 1400px;
+                    margin: 0 auto;
+                }}
+                header {{
+                    background: white;
+                    padding: 30px;
+                    border-radius: 10px;
+                    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                    margin-bottom: 30px;
+                }}
+                h1 {{
+                    color: #333;
+                    margin-bottom: 10px;
+                    font-size: 28px;
+                }}
+                .subtitle {{
+                    color: #666;
+                    font-size: 14px;
+                    margin-bottom: 20px;
+                }}
+                .nav-links {{
+                    display: flex;
+                    gap: 10px;
+                }}
+                .nav-links a {{
+                    color: #1976d2;
+                    text-decoration: none;
+                    font-weight: 500;
+                }}
+                .nav-links a:hover {{
+                    text-decoration: underline;
+                }}
+                .tabs {{
+                    background: white;
+                    padding: 0;
+                    border-radius: 10px 10px 0 0;
+                    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                    margin-bottom: 0;
+                }}
+                .tab-list {{
+                    display: flex;
+                    border-bottom: 1px solid #e0e0e0;
+                    padding: 0 30px;
+                }}
+                .tab {{
+                    padding: 15px 20px;
+                    cursor: pointer;
+                    border-bottom: 3px solid transparent;
+                    color: #666;
+                    font-weight: 500;
+                    transition: all 0.2s;
+                }}
+                .tab:hover {{
+                    color: #333;
+                }}
+                .tab.active {{
+                    color: #1976d2;
+                    border-bottom-color: #1976d2;
+                }}
+                .tab-content {{
+                    background: white;
+                    padding: 30px;
+                    border-radius: 0 0 10px 10px;
+                    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                    min-height: 400px;
+                }}
+                .tab-pane {{
+                    display: none;
+                }}
+                .tab-pane.active {{
+                    display: block;
+                }}
+                .stats-grid {{
+                    display: grid;
+                    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+                    gap: 20px;
+                    margin-bottom: 30px;
+                }}
+                .stat-card {{
+                    background: white;
+                    padding: 30px;
+                    border-radius: 10px;
+                    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                    text-align: center;
+                }}
+                .stat-number {{
+                    font-size: 48px;
+                    font-weight: bold;
+                    color: #1976d2;
+                    margin-bottom: 10px;
+                }}
+                .stat-label {{
+                    color: #666;
+                    font-size: 16px;
+                }}
+                .empty-state {{
+                    text-align: center;
+                    padding: 60px 20px;
+                }}
+                .empty-state h2 {{
+                    color: #333;
+                    margin-bottom: 15px;
+                    font-size: 24px;
+                }}
+                .empty-state p {{
+                    color: #666;
+                    margin-bottom: 25px;
+                }}
+                .btn {{
+                    background: #1976d2;
+                    color: white;
+                    border: none;
+                    padding: 12px 30px;
+                    border-radius: 6px;
+                    cursor: pointer;
+                    font-size: 16px;
+                    font-weight: 500;
+                    text-decoration: none;
+                    display: inline-block;
+                    transition: background 0.2s;
+                }}
+                .btn:hover {{
+                    background: #1565c0;
+                }}
+                .btn-secondary {{
+                    background: #4caf50;
+                }}
+                .btn-secondary:hover {{
+                    background: #45a049;
+                }}
+                .model-card {{
+                    background: #f9f9f9;
+                    border-radius: 8px;
+                    padding: 25px;
+                    border: 1px solid #e0e0e0;
+                }}
+                .model-name {{
+                    font-size: 22px;
+                    font-weight: 600;
+                    color: #333;
+                    margin-bottom: 10px;
+                }}
+                .model-type {{
+                    display: inline-block;
+                    padding: 4px 12px;
+                    background: #e3f2fd;
+                    color: #1976d2;
+                    border-radius: 12px;
+                    font-size: 12px;
+                    font-weight: 500;
+                }}
+                .settings-form {{
+                    max-width: 600px;
+                }}
+                .form-group {{
+                    margin-bottom: 20px;
+                }}
+                .form-group label {{
+                    display: block;
+                    margin-bottom: 8px;
+                    color: #333;
+                    font-weight: 500;
+                }}
+                .form-group input {{
+                    width: 100%;
+                    padding: 10px;
+                    border: 1px solid #ddd;
+                    border-radius: 6px;
+                    font-size: 14px;
+                }}
+                .form-group input:focus {{
+                    outline: none;
+                    border-color: #1976d2;
+                }}
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <header>
+                    <h1>🤖 ML Model Registry</h1>
+                    <div class="subtitle">Discover and manage your deployed machine learning models</div>
+                    <div class="nav-links">
+                        <a href="#dashboard">Dashboard</a>
+                        <a href="/api/models">API</a>
+                        <a href="#settings">Settings</a>
+                    </div>
+                </header>
+                
+                <div class="tabs">
+                    <div class="tab-list">
+                        <div class="tab active" onclick="switchTab(event, 'dashboard')">Dashboard</div>
+                        <div class="tab" onclick="switchTab(event, 'models')">Discovered Models</div>
+                        <div class="tab" onclick="switchTab(event, 'settings')">Settings</div>
+                    </div>
+                </div>
+                
+                <div class="tab-content">
+                    <!-- Dashboard Tab -->
+                    <div id="dashboard" class="tab-pane active">
+                        <div class="stats-grid">
+                            <div class="stat-card">
+                                <div class="stat-number">{total_models}</div>
+                                <div class="stat-label">Total Models</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-number">{total_providers}</div>
+                                <div class="stat-label">Providers</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-number">{model_types}</div>
+                                <div class="stat-label">Model Types</div>
+                            </div>
+                        </div>
+                        
+                        {_render_dashboard_content(models)}
+                    </div>
+                    
+                    <!-- Discovered Models Tab -->
+                    <div id="models" class="tab-pane">
+                        <h2 style="margin-bottom: 30px;">Discovered Models</h2>
+                        {_render_models_list(models)}
+                    </div>
+                    
+                    <!-- Settings Tab -->
+                    <div id="settings" class="tab-pane">
+                        <h2 style="margin-bottom: 10px;">⚙️ Settings</h2>
+                        <p style="color: #666; margin-bottom: 30px;">Configure your watsonx.ai credentials</p>
+                        
+                        <div class="settings-form">
+                            <div class="form-group">
+                                <label>watsonx.ai API Key</label>
+                                <input type="password" placeholder="Enter your IBM Cloud API key" value="{'***' if settings.watsonx_api_key else ''}">
+                            </div>
+                            <div class="form-group">
+                                <label>Space ID</label>
+                                <input type="text" placeholder="Enter your watsonx.ai space ID" value="{settings.watsonx_space_id or ''}">
+                            </div>
+                            <div class="form-group">
+                                <label>watsonx.ai URL</label>
+                                <input type="text" placeholder="https://us-south.ml.cloud.ibm.com" value="{settings.watsonx_url}">
+                            </div>
+                            <button class="btn" onclick="alert('Settings are configured via .env file. Please edit .env and restart the server.')">Save Settings</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <script>
+                function switchTab(event, tabName) {{
+                    // Hide all tabs
+                    document.querySelectorAll('.tab-pane').forEach(pane => {{
+                        pane.classList.remove('active');
+                    }});
+                    document.querySelectorAll('.tab').forEach(tab => {{
+                        tab.classList.remove('active');
+                    }});
+                    
+                    // Show selected tab
+                    document.getElementById(tabName).classList.add('active');
+                    event.target.classList.add('active');
+                }}
+            </script>
+        </body>
+        </html>
+        """
+        
+        return HTMLResponse(content=html_content)
     
-    html = f"""
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <title>ML Registry - Integration Guide</title>
-        <style>
-            body {{ font-family: Arial, sans-serif; max-width: 1200px; margin: 50px auto; padding: 20px; }}
-            h1 {{ color: #1976d2; }}
-            .integration {{ background: #f5f5f5; padding: 20px; margin: 20px 0; border-radius: 8px; }}
-            .endpoint {{ background: #263238; color: #aed581; padding: 10px; border-radius: 4px; font-family: monospace; margin: 10px 0; }}
-            .status {{ color: #4caf50; font-weight: bold; }}
-            code {{ background: #e0e0e0; padding: 2px 6px; border-radius: 3px; }}
-        </style>
-    </head>
-    <body>
-        <h1>🤖 ML Registry Unified Server</h1>
-        <p class="status">✅ Server Running | {models_count} Models Discovered</p>
-        
-        <div class="integration">
-            <h2>Option 1: Context Forge (MCP Protocol)</h2>
-            <p>Use this for MCP-based integration with Context Forge middleware.</p>
-            <h3>Configuration:</h3>
-            <div class="endpoint">
-{{
-  "name": "ml-registry",
-  "url": "https://your-server-url",
-  "transport": "http",
-  "endpoints": {{
-    "mcp": "/mcp",
-    "sse": "/sse"
-  }}
-}}</div>
-            <h3>Test:</h3>
-            <div class="endpoint">curl https://your-server-url/mcp/tools</div>
+    except Exception as e:
+        logger.error(f"Error rendering UI: {e}", exc_info=True)
+        return HTMLResponse(
+            content=f"<h1>Error</h1><p>Failed to load models: {str(e)}</p>",
+            status_code=500
+        )
+
+
+def _render_dashboard_content(models):
+    """Render dashboard content."""
+    if not models:
+        return """
+        <div class="empty-state">
+            <h2>No Models Found</h2>
+            <p>Deploy models to watsonx.ai to see them here</p>
         </div>
-        
-        <div class="integration">
-            <h2>Option 2: Direct watsonx Orchestrate (REST API)</h2>
-            <p>Use this for direct REST API integration without middleware.</p>
-            <h3>Import OpenAPI:</h3>
-            <div class="endpoint">https://your-server-url/api/openapi.json</div>
-            <h3>List Models:</h3>
-            <div class="endpoint">GET https://your-server-url/api/models</div>
-            <h3>Make Prediction:</h3>
-            <div class="endpoint">POST https://your-server-url/api/models/{{model_name}}/predict</div>
-        </div>
-        
-        <div class="integration">
-            <h2>📚 Documentation & Tools</h2>
-            <ul>
-                <li><a href="/schemas">🔧 Schema Editor</a> - Define model input schemas</li>
-                <li><a href="/api/docs">Interactive API Documentation</a></li>
-                <li><a href="/api/openapi.json">OpenAPI Schema</a></li>
-                <li><a href="/health">Health Check</a></li>
-                <li><a href="/api/models">Models List</a></li>
-            </ul>
-        </div>
-    </body>
-    </html>
-    """
+        """
     
-    return HTMLResponse(content=html)
+    cards = []
+    for model in models[:6]:
+        cards.append(f"""
+        <div class="model-card">
+            <div class="model-name">{model.name}</div>
+            <span class="model-type">{model.model_type.value}</span>
+            <p style="color: #666; margin-top: 10px; font-size: 14px;">{model.description or 'No description'}</p>
+            <button class="btn btn-secondary" style="margin-top: 15px;" onclick="switchTab(event, 'models')">View Details</button>
+        </div>
+        """)
+    
+    return f'<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: 20px;">{"".join(cards)}</div>'
+
+
+def _render_models_list(models):
+    """Render simple models list."""
+    if not models:
+        return """
+        <div class="empty-state">
+            <h2>No Models Discovered</h2>
+            <p>Configure your watsonx.ai credentials to discover deployed models</p>
+            <button class="btn" onclick="switchTab(event, 'settings')">Go to Settings</button>
+        </div>
+        """
+    
+    cards = []
+    for model in models:
+        cards.append(f"""
+        <div class="model-card" style="margin-bottom: 20px;">
+            <div class="model-name">{model.name}</div>
+            <span class="model-type">{model.model_type.value}</span>
+            <p style="color: #666; margin-top: 10px; font-size: 14px;">{model.description or 'No description'}</p>
+            <div style="margin-top: 15px; font-size: 13px; color: #666;">
+                <div><strong>Provider:</strong> {model.provider}</div>
+                <div><strong>Framework:</strong> {model.framework}</div>
+                <div><strong>Status:</strong> {model.status}</div>
+            </div>
+        </div>
+        """)
+    
+    return "".join(cards)
 
 @app.get("/schemas", response_class=HTMLResponse)
 async def schema_editor_page(request: Request):
