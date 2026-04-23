@@ -115,34 +115,41 @@ async def execute_tool(
             # Extract parameters (if present)
             parameters = arguments.get("parameters")
             
-            # The arguments should now contain input_data directly
-            input_data = arguments.get("input_data", arguments)
+            logger.info(f"Raw arguments received: {arguments}")
             
             # Check if we need to transform from custom schema format to watsonx.ai format
-            if input_data == arguments and "input_data" not in arguments:
+            if "input_data" not in arguments:
                 # Custom schema format: individual fields sent by WxO
                 # Need to transform to watsonx.ai format: {fields: [...], values: [[...]]}
                 
                 # Remove parameters from the field data
                 field_data = {k: v for k, v in arguments.items() if k != "parameters"}
                 
-                if field_data and not ("fields" in field_data and "values" in field_data):
+                if field_data:
                     # Transform individual fields to watsonx.ai format
                     fields = list(field_data.keys())
                     values = [list(field_data.values())]
+                    
+                    # Convert string numbers to numeric types before creating the structure
+                    values = convert_values_to_numeric(values)
                     
                     input_data = [{
                         "fields": fields,
                         "values": values
                     }]
-                    logger.info(f"Transformed custom schema input to watsonx.ai format: {len(fields)} fields")
+                    logger.info(f"Transformed {len(fields)} individual fields to watsonx.ai format")
+                    logger.info(f"Fields: {fields}")
+                    logger.info(f"Values: {values}")
                 else:
-                    input_data = field_data
+                    # No fields provided
+                    raise ValueError("No input fields provided")
+            else:
+                # input_data is already provided
+                input_data = arguments.get("input_data")
+                # Convert string numbers to numeric types
+                input_data = convert_values_to_numeric(input_data)
             
-            # Convert string numbers to numeric types (important for WxO/Context Forge)
-            input_data = convert_values_to_numeric(input_data)
-            
-            logger.debug(f"Input data for prediction: {input_data}")
+            logger.info(f"Final input_data for prediction: {input_data}")
             
             # Make prediction
             try:
