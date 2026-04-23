@@ -9,6 +9,7 @@ All running on a single port with different endpoint paths.
 """
 
 import logging
+import sys
 from typing import Dict, Any, Optional
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import StreamingResponse, JSONResponse, HTMLResponse
@@ -21,6 +22,12 @@ from .config import settings
 from .registry import ModelRegistry
 from .mcp.tools import generate_mcp_tools
 
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    stream=sys.stdout
+)
 logger = logging.getLogger(__name__)
 
 app = FastAPI(
