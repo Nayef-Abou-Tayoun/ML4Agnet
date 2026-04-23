@@ -197,9 +197,19 @@ class WatsonxProvider(MLProvider):
                             "input_data": [wxo_input]
                         }
                 elif "values" in wxo_input:
-                    # Only values present
+                    # Only values present - need to wrap and convert
+                    values = wxo_input["values"]
+                    # Convert string numbers to numeric types
+                    values = convert_values_to_numeric(values)
+                    # Wrap single array into list(list) format
+                    if isinstance(values, list) and len(values) > 0:
+                        if not isinstance(values[0], list):
+                            # Single row: [1129, 0] -> [[1129, 0]]
+                            values = [values]
                     scoring_payload = {
-                        "input_data": [wxo_input]
+                        "input_data": [{
+                            "values": values
+                        }]
                     }
                 else:
                     # Unknown format, pass as-is
