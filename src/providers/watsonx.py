@@ -10,6 +10,48 @@ from .base import MLProvider, ModelMetadata, ModelType
 logger = logging.getLogger(__name__)
 
 
+def convert_to_numeric(value):
+    """Convert a value to numeric type if possible.
+    
+    Args:
+        value: Value to convert (can be string, int, float, or other)
+        
+    Returns:
+        Numeric value (int or float) if conversion possible, otherwise original value
+    """
+    if isinstance(value, (int, float)):
+        return value
+    
+    if isinstance(value, str):
+        try:
+            # Try int first
+            if '.' not in value:
+                return int(value)
+            # Try float
+            return float(value)
+        except (ValueError, TypeError):
+            return value
+    
+    return value
+
+
+def convert_values_to_numeric(data):
+    """Recursively convert string numbers to numeric types in nested structures.
+    
+    Args:
+        data: Data structure (list, dict, or primitive)
+        
+    Returns:
+        Data with string numbers converted to numeric types
+    """
+    if isinstance(data, list):
+        return [convert_values_to_numeric(item) for item in data]
+    elif isinstance(data, dict):
+        return {key: convert_values_to_numeric(value) for key, value in data.items()}
+    else:
+        return convert_to_numeric(data)
+
+
 class WatsonxProvider(MLProvider):
     """Provider for watsonx.ai deployed ML models."""
     
@@ -109,15 +151,22 @@ class WatsonxProvider(MLProvider):
                 # Check if already in correct watsonx.ai format (both fields and values present)
                 if "fields" in wxo_input and "values" in wxo_input:
                     # Already in correct watsonx.ai format
-                    scoring_payload = {
-                        "input_data": [wxo_input]
-                    }
-                elif "fields" in wxo_input and "records" in wxo_input:
-                    # Convert records to values format (records is an alias for values)
+                    # Convert any string numbers to numeric types
+                    values = convert_values_to_numeric(wxo_input["values"])
                     scoring_payload = {
                         "input_data": [{
                             "fields": wxo_input["fields"],
-                            "values": wxo_input["records"]
+                            "values": values
+                        }]
+                    }
+                elif "fields" in wxo_input and "records" in wxo_input:
+                    # Convert records to values format (records is an alias for values)
+                    # Also convert any string numbers to numeric types
+                    records = convert_values_to_numeric(wxo_input["records"])
+                    scoring_payload = {
+                        "input_data": [{
+                            "fields": wxo_input["fields"],
+                            "values": records
                         }]
                     }
                 elif "fields" in wxo_input:
