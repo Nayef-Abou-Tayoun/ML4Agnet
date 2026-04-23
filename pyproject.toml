@@ -46,7 +46,7 @@ dev = [
 ]
 
 [project.scripts]
-ml-registry-mcp-server = "src.server:main"
+ml-registry-mcp-server = "src.__main__:cli"
 
 [project.urls]
 Homepage = "https://github.com/Nayef-Abou-Tayoun/ML4Agnet"
