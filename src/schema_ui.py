@@ -288,7 +288,11 @@ async def get_schema_editor_html(request: Request, registry: ModelRegistry) -> s
                 <div class="fields-editor">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
                         <label class="form-label" style="margin: 0;">Input Fields</label>
-                        <button class="btn btn-secondary btn-small" onclick="addField()">+ Add Field</button>
+                        <div style="display: flex; gap: 10px;">
+                            <input type="file" id="jsonFileInput" accept=".json" style="display: none;" onchange="importJSON(event)">
+                            <button class="btn btn-secondary btn-small" onclick="document.getElementById('jsonFileInput').click()">📤 Import JSON</button>
+                            <button class="btn btn-secondary btn-small" onclick="addField()">+ Add Field</button>
+                        </div>
                     </div>
                     <div id="fieldsContainer">
                         <!-- Fields will be added here -->
@@ -514,6 +518,67 @@ async def get_schema_editor_html(request: Request, registry: ModelRegistry) -> s
                     console.error('Error deleting schema:', error);
                     alert('Failed to delete schema');
                 }
+            }
+            
+            // Import JSON
+            function importJSON(event) {
+                const file = event.target.files[0];
+                if (!file) return;
+                
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    try {
+                        const json = JSON.parse(e.target.result);
+                        
+                        // Support multiple JSON formats
+                        let importedFields = [];
+                        
+                        // Format 1: Array of field objects with name, type, required, description
+                        if (Array.isArray(json)) {
+                            importedFields = json.map(f => ({
+                                name: f.name || '',
+                                type: f.type || 'string',
+                                required: f.required || false,
+                                description: f.description || ''
+                            }));
+                        }
+                        // Format 2: Object with fields array
+                        else if (json.fields && Array.isArray(json.fields)) {
+                            importedFields = json.fields.map(f => ({
+                                name: f.name || '',
+                                type: f.type || 'string',
+                                required: f.required || false,
+                                description: f.description || ''
+                            }));
+                        }
+                        // Format 3: Just an array of field names (infer as strings)
+                        else if (json.input_data && json.input_data[0] && json.input_data[0].fields) {
+                            // Extract from watsonx.ai format
+                            importedFields = json.input_data[0].fields.map(name => ({
+                                name: name,
+                                type: 'string',
+                                required: true,
+                                description: ''
+                            }));
+                        }
+                        
+                        if (importedFields.length > 0) {
+                            fields = importedFields;
+                            renderFields();
+                            alert(`Imported ${importedFields.length} fields successfully!`);
+                        } else {
+                            alert('No valid fields found in JSON file');
+                        }
+                        
+                        // Reset file input
+                        event.target.value = '';
+                    } catch (error) {
+                        console.error('Error parsing JSON:', error);
+                        alert('Invalid JSON file: ' + error.message);
+                        event.target.value = '';
+                    }
+                };
+                reader.readAsText(file);
             }
             
             // Close modal
