@@ -108,6 +108,14 @@ class WatsonxProvider(MLProvider):
                     scoring_payload = {
                         "input_data": [wxo_input]
                     }
+                elif "fields" in wxo_input and "records" in wxo_input:
+                    # Convert records to values format (records is an alias for values)
+                    scoring_payload = {
+                        "input_data": [{
+                            "fields": wxo_input["fields"],
+                            "values": wxo_input["records"]
+                        }]
+                    }
                 elif "fields" in wxo_input:
                     # Convert fields to values format
                     fields = wxo_input["fields"]
