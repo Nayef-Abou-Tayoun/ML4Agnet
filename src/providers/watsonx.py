@@ -1,5 +1,6 @@
 """watsonx.ai provider for custom ML models."""
 
+import json
 import logging
 from typing import Dict, List, Any, Optional
 from ibm_watsonx_ai import APIClient, Credentials
@@ -92,6 +93,9 @@ class WatsonxProvider(MLProvider):
             await self.initialize()
         
         try:
+            # Log the incoming request
+            logger.info(f"watsonx provider received input_data: {json.dumps(input_data, indent=2)}")
+            
             # Get deployment details
             deployments = Deployments(self._client)
             

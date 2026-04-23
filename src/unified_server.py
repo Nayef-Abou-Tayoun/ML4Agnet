@@ -457,7 +457,9 @@ async def handle_mcp_tool_call(request_id: Any, params: Dict[str, Any]) -> Dict[
         }
     
     try:
-        logger.info(f"Calling predict for model {model.id} with arguments: {arguments}")
+        logger.info(f"Calling predict for model {model.id}")
+        logger.info(f"Arguments received: {json.dumps(arguments, indent=2)}")
+        
         result = await provider.predict(model.id, arguments)
         
         if result is None:
@@ -468,7 +470,17 @@ async def handle_mcp_tool_call(request_id: Any, params: Dict[str, Any]) -> Dict[
                 "id": request_id
             }
         
+        if not isinstance(result, dict):
+            logger.error(f"Prediction returned non-dict type: {type(result)}")
+            return {
+                "jsonrpc": "2.0",
+                "error": {"code": -32603, "message": f"Invalid result type: {type(result)}"},
+                "id": request_id
+            }
+        
         logger.info(f"Prediction successful for model {model.id}")
+        logger.info(f"Result: {json.dumps(result, indent=2)}")
+        
         return {
             "jsonrpc": "2.0",
             "result": {
