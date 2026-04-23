@@ -5,6 +5,30 @@ from typing import List, Dict, Any
 from ..providers.base import ModelMetadata
 from ..registry import ModelRegistry
 
+
+def convert_to_numeric(value):
+    """Convert a value to numeric type if possible."""
+    if isinstance(value, (int, float)):
+        return value
+    if isinstance(value, str):
+        try:
+            if '.' not in value:
+                return int(value)
+            return float(value)
+        except (ValueError, TypeError):
+            return value
+    return value
+
+
+def convert_values_to_numeric(data):
+    """Recursively convert string numbers to numeric types."""
+    if isinstance(data, list):
+        return [convert_values_to_numeric(item) for item in data]
+    elif isinstance(data, dict):
+        return {key: convert_values_to_numeric(value) for key, value in data.items()}
+    else:
+        return convert_to_numeric(data)
+
 logger = logging.getLogger(__name__)
 
 
@@ -81,6 +105,9 @@ async def execute_tool(
                         if not isinstance(values[0], list):
                             values = [values]
                     input_data = {"values": values}
+            
+            # Convert string numbers to numeric types (important for WxO/Context Forge)
+            input_data = convert_values_to_numeric(input_data)
             
             logger.debug(f"Input data for prediction: {input_data}")
             
