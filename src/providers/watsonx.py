@@ -95,13 +95,65 @@ class WatsonxProvider(MLProvider):
             # Get deployment details
             deployments = Deployments(self._client)
             
-            # Prepare scoring payload
-            scoring_payload = {
-                "input_data": [input_data]
-            }
-            
-            if parameters:
-                scoring_payload["parameters"] = parameters
+            # Handle different input formats
+            # Check if input_data already has the watsonx.ai structure
+            if "input_data" in input_data:
+                # WxO format: {"input_data": {"fields": [...]}, "parameters": {...}}
+                wxo_input = input_data["input_data"]
+                wxo_params = input_data.get("parameters", {})
+                
+                # Convert fields to values format
+                if "fields" in wxo_input:
+                    # Extract field values and convert to array format
+                    fields = wxo_input["fields"]
+                    if isinstance(fields, list) and len(fields) > 0:
+                        # Convert list of dicts to list of values
+                        if isinstance(fields[0], dict):
+                            # Get field names and values
+                            field_names = list(fields[0].keys())
+                            values = [[record[field] for field in field_names] for record in fields]
+                            
+                            scoring_payload = {
+                                "input_data": [{
+                                    "fields": field_names,
+                                    "values": values
+                                }]
+                            }
+                        else:
+                            # Already in array format
+                            scoring_payload = {
+                                "input_data": [{
+                                    "values": fields
+                                }]
+                            }
+                    else:
+                        scoring_payload = {
+                            "input_data": [wxo_input]
+                        }
+                elif "values" in wxo_input:
+                    # Already in correct format
+                    scoring_payload = {
+                        "input_data": [wxo_input]
+                    }
+                else:
+                    # Unknown format, pass as-is
+                    scoring_payload = {
+                        "input_data": [wxo_input]
+                    }
+                
+                # Merge parameters
+                if parameters:
+                    scoring_payload["parameters"] = parameters
+                elif wxo_params:
+                    scoring_payload["parameters"] = wxo_params
+            else:
+                # Direct format: just the data
+                scoring_payload = {
+                    "input_data": [input_data]
+                }
+                
+                if parameters:
+                    scoring_payload["parameters"] = parameters
             
             # Make prediction
             result = deployments.score(model_id, scoring_payload)
