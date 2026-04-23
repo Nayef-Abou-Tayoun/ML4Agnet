@@ -136,14 +136,22 @@ class WatsonxProvider(MLProvider):
         
         try:
             # Log the incoming request
+            logger.info(f"watsonx provider received input_data type: {type(input_data)}")
             logger.info(f"watsonx provider received input_data: {json.dumps(input_data, indent=2)}")
             
             # Get deployment details
             deployments = Deployments(self._client)
             
             # Handle different input formats
-            # Check if input_data already has the watsonx.ai structure
-            if "input_data" in input_data:
+            # Check if input_data is already a list (from tools.py transformation)
+            if isinstance(input_data, list):
+                # Already in correct watsonx.ai format: [{"fields": [...], "values": [...]}]
+                logger.info("Input is already a list - using directly")
+                scoring_payload = {"input_data": input_data}
+                if parameters:
+                    scoring_payload["parameters"] = parameters
+            # Check if input_data has nested "input_data" key
+            elif isinstance(input_data, dict) and "input_data" in input_data:
                 # WxO format: {"input_data": {"fields": [...]}, "parameters": {...}}
                 wxo_input = input_data["input_data"]
                 wxo_params = input_data.get("parameters", {})
@@ -157,7 +165,7 @@ class WatsonxProvider(MLProvider):
                     elif wxo_params:
                         scoring_payload["parameters"] = wxo_params
                 # Check if already in correct watsonx.ai format (both fields and values present)
-                elif "fields" in wxo_input and "values" in wxo_input:
+                elif isinstance(wxo_input, dict) and "fields" in wxo_input and "values" in wxo_input:
                     # Already in correct watsonx.ai format
                     # Convert any string numbers to numeric types
                     values = convert_values_to_numeric(wxo_input["values"])
