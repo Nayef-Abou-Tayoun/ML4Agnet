@@ -1,11 +1,24 @@
 # watsonx Orchestrate Configuration for ML Registry MCP Server
 
-## Issue with stdio + uvx + Git
-❌ **Problem**: WxO's runtime environment doesn't have Git installed, so `uvx --from git+https://...` fails.
-
-## ✅ Recommended Solution: Use SSE Transport
+## ✅ Solution: Use mcp-proxy to Bridge SSE to stdio
 
 ### Configuration for watsonx Orchestrate
+
+```json
+{
+  "mcpServers": {
+    "ml-registry": {
+      "command": "uvx",
+      "args": [
+        "mcp-proxy",
+        "https://mlregistry12.27jid12fsm9n.us-south.codeengine.appdomain.cloud/mcp"
+      ]
+    }
+  }
+}
+```
+
+### Alternative: Direct SSE (if supported by your WxO version)
 
 ```json
 {
