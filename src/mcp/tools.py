@@ -70,10 +70,16 @@ async def execute_tool(
             # Remove 'parameters' from arguments to get just the input fields
             input_data = {k: v for k, v in arguments.items() if k != "parameters"}
             
-            # If there's a 'values' field, use it directly (watsonx format)
+            # If there's a 'values' field, wrap it properly for watsonx
             if "values" in input_data and len(input_data) == 1:
-                # Single 'values' field - this is the array format
-                input_data = {"values": input_data["values"]}
+                values = input_data["values"]
+                # watsonx expects list(list), so if we have a single list, wrap it
+                if isinstance(values, list) and len(values) > 0:
+                    # Check if it's already list(list) or just list
+                    if not isinstance(values[0], list):
+                        # Single row - wrap it: [1129, 0] -> [[1129, 0]]
+                        values = [values]
+                input_data = {"values": values}
             
             logger.debug(f"Reconstructed input_data: {input_data}")
             
