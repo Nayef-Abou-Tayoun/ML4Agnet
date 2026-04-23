@@ -168,14 +168,20 @@ class WatsonxProvider(MLProvider):
                 elif isinstance(wxo_input, dict) and "fields" in wxo_input and "values" in wxo_input:
                     # Already in correct watsonx.ai format
                     # Convert any string numbers to numeric types
-                    values = convert_values_to_numeric(wxo_input["values"])
-                    scoring_payload = {
-                        "input_data": [{
-                            "fields": wxo_input["fields"],
-                            "values": values
-                        }]
-                    }
-                elif "fields" in wxo_input and "records" in wxo_input:
+                    try:
+                        values = convert_values_to_numeric(wxo_input["values"])
+                        scoring_payload = {
+                            "input_data": [{
+                                "fields": wxo_input["fields"],
+                                "values": values
+                            }]
+                        }
+                    except KeyError as e:
+                        logger.error(f"KeyError accessing 'values': {e}")
+                        logger.error(f"wxo_input keys: {wxo_input.keys()}")
+                        logger.error(f"wxo_input content: {wxo_input}")
+                        raise
+                elif isinstance(wxo_input, dict) and "fields" in wxo_input and "records" in wxo_input:
                     # Convert records to values format (records is an alias for values)
                     # Also convert any string numbers to numeric types
                     records = convert_values_to_numeric(wxo_input["records"])
