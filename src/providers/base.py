@@ -61,9 +61,11 @@ class ModelMetadata:
         Otherwise, accepts the full watsonx.ai input_data structure directly.
         """
         # Check if we have a custom schema
+        field_properties = {}
+        required_fields_list = []
+        
         if custom_schema and custom_schema.get("fields"):
             # Build schema from custom field definitions
-            field_properties = {}
             required_fields = []
             
             for field in custom_schema["fields"]:
@@ -86,17 +88,9 @@ class ModelMetadata:
                 if field.get("required", False):
                     required_fields.append(field_name)
             
-            properties = {
-                "input_data": {
-                    "type": "array",
-                    "description": "Array of input data objects",
-                    "items": {
-                        "type": "object",
-                        "properties": field_properties,
-                        "required": required_fields
-                    }
-                }
-            }
+            # For custom schemas, use single object instead of array
+            properties = field_properties
+            required_fields_list = required_fields  # Use the list we just built
         else:
             # Default schema - accepts full watsonx.ai input_data structure
             properties = {
@@ -130,28 +124,41 @@ class ModelMetadata:
                 }
             }
         
-        # Add optional parameters
-        properties["parameters"] = {
-            "type": "object",
-            "description": "Optional inference parameters",
-            "properties": {
-                "timeout": {
-                    "type": "integer",
-                    "description": "Request timeout in seconds",
-                    "default": 30
+        # Build the final schema
+        if custom_schema and custom_schema.get("fields"):
+            # Custom schema: direct field properties (single object)
+            return {
+                "name": f"{self.provider}_{self.name.lower().replace(' ', '_').replace('-', '_')}",
+                "description": self.description or f"{self.model_type.value} model: {self.name}",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": properties,
+                    "required": required_fields_list
                 }
             }
-        }
-        
-        return {
-            "name": f"{self.provider}_{self.name.lower().replace(' ', '_').replace('-', '_')}",
-            "description": self.description or f"{self.model_type.value} model: {self.name}",
-            "inputSchema": {
+        else:
+            # Default schema: array-based with optional parameters
+            properties["parameters"] = {
                 "type": "object",
-                "properties": properties,
-                "required": ["input_data"]
+                "description": "Optional inference parameters",
+                "properties": {
+                    "timeout": {
+                        "type": "integer",
+                        "description": "Request timeout in seconds",
+                        "default": 30
+                    }
+                }
             }
-        }
+            
+            return {
+                "name": f"{self.provider}_{self.name.lower().replace(' ', '_').replace('-', '_')}",
+                "description": self.description or f"{self.model_type.value} model: {self.name}",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": properties,
+                    "required": ["input_data"]
+                }
+            }
 
 
 class MLProvider(ABC):
