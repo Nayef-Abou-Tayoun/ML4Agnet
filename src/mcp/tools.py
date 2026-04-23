@@ -80,7 +80,8 @@ async def execute_tool(
                 raise
     
     # Tool not found
-    error_msg = f"Tool {tool_name} not found. Available tools: {[f'{m.provider}_{m.name.lower().replace(' ', '_').replace('-', '_')}' for m in models[:5]]}"
+    available_tools = [f"{m.provider}_{m.name.lower().replace(' ', '_').replace('-', '_')}" for m in models[:5]]
+    error_msg = f"Tool {tool_name} not found. Available tools: {available_tools}"
     logger.error(error_msg)
     raise ValueError(error_msg)
 
