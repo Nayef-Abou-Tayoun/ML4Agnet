@@ -118,18 +118,26 @@ async def execute_tool(
             # The arguments should now contain input_data directly
             input_data = arguments.get("input_data", arguments)
             
-            # If input_data is not present, use arguments as-is (backward compatibility)
+            # Check if we need to transform from custom schema format to watsonx.ai format
             if input_data == arguments and "input_data" not in arguments:
-                # Old format: try to reconstruct
-                input_data = {k: v for k, v in arguments.items() if k != "parameters"}
+                # Custom schema format: individual fields sent by WxO
+                # Need to transform to watsonx.ai format: {fields: [...], values: [[...]]}
                 
-                # If there's a 'values' field, wrap it properly for watsonx
-                if "values" in input_data and len(input_data) == 1:
-                    values = input_data["values"]
-                    if isinstance(values, list) and len(values) > 0:
-                        if not isinstance(values[0], list):
-                            values = [values]
-                    input_data = {"values": values}
+                # Remove parameters from the field data
+                field_data = {k: v for k, v in arguments.items() if k != "parameters"}
+                
+                if field_data and not ("fields" in field_data and "values" in field_data):
+                    # Transform individual fields to watsonx.ai format
+                    fields = list(field_data.keys())
+                    values = [list(field_data.values())]
+                    
+                    input_data = [{
+                        "fields": fields,
+                        "values": values
+                    }]
+                    logger.info(f"Transformed custom schema input to watsonx.ai format: {len(fields)} fields")
+                else:
+                    input_data = field_data
             
             # Convert string numbers to numeric types (important for WxO/Context Forge)
             input_data = convert_values_to_numeric(input_data)

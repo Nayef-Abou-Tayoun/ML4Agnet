@@ -1,0 +1,116 @@
+[
+  {
+    "name": "PART_NUM",
+    "type": "integer",
+    "required": true,
+    "description": "Part number identifier"
+  },
+  {
+    "name": "STOCKING_PCT",
+    "type": "float",
+    "required": true,
+    "description": "Stocking percentage"
+  },
+  {
+    "name": "PART_SALES_QTY",
+    "type": "integer",
+    "required": true,
+    "description": "Part sales quantity"
+  },
+  {
+    "name": "PART_SALES_AMT",
+    "type": "float",
+    "required": true,
+    "description": "Part sales amount"
+  },
+  {
+    "name": "PART_SHIP_QTY",
+    "type": "integer",
+    "required": true,
+    "description": "Part shipping quantity"
+  },
+  {
+    "name": "PART_SHIP_AMT",
+    "type": "float",
+    "required": true,
+    "description": "Part shipping amount"
+  },
+  {
+    "name": "PART_DEMAND",
+    "type": "integer",
+    "required": true,
+    "description": "Part demand"
+  },
+  {
+    "name": "PART_CLASS_CDE",
+    "type": "integer",
+    "required": true,
+    "description": "Part class code"
+  },
+  {
+    "name": "PART_SALES_QTY_lag1",
+    "type": "integer",
+    "required": true,
+    "description": "Part sales quantity lag 1"
+  },
+  {
+    "name": "PART_SALES_QTY_lag2",
+    "type": "integer",
+    "required": true,
+    "description": "Part sales quantity lag 2"
+  },
+  {
+    "name": "PART_SALES_QTY_lag3",
+    "type": "integer",
+    "required": true,
+    "description": "Part sales quantity lag 3"
+  },
+  {
+    "name": "PART_SALES_QTY_lag4",
+    "type": "integer",
+    "required": true,
+    "description": "Part sales quantity lag 4"
+  },
+  {
+    "name": "PART_SALES_QTY_lag5",
+    "type": "integer",
+    "required": true,
+    "description": "Part sales quantity lag 5"
+  },
+  {
+    "name": "PART_SALES_QTY_lag6",
+    "type": "integer",
+    "required": true,
+    "description": "Part sales quantity lag 6"
+  },
+  {
+    "name": "rmean_PART_SALES_QTY_3",
+    "type": "float",
+    "required": true,
+    "description": "Rolling mean of part sales quantity (3 periods)"
+  },
+  {
+    "name": "month",
+    "type": "integer",
+    "required": true,
+    "description": "Month (1-12)"
+  },
+  {
+    "name": "quarter",
+    "type": "integer",
+    "required": true,
+    "description": "Quarter (1-4)"
+  },
+  {
+    "name": "year",
+    "type": "integer",
+    "required": true,
+    "description": "Year"
+  },
+  {
+    "name": "age_month",
+    "type": "float",
+    "required": true,
+    "description": "Age in months"
+  }
+]
