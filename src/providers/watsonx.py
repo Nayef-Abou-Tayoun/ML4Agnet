@@ -102,9 +102,14 @@ class WatsonxProvider(MLProvider):
                 wxo_input = input_data["input_data"]
                 wxo_params = input_data.get("parameters", {})
                 
-                # Convert fields to values format
-                if "fields" in wxo_input:
-                    # Extract field values and convert to array format
+                # Check if already in correct watsonx.ai format (both fields and values present)
+                if "fields" in wxo_input and "values" in wxo_input:
+                    # Already in correct watsonx.ai format
+                    scoring_payload = {
+                        "input_data": [wxo_input]
+                    }
+                elif "fields" in wxo_input:
+                    # Convert fields to values format
                     fields = wxo_input["fields"]
                     if isinstance(fields, list) and len(fields) > 0:
                         # Convert list of dicts to list of values
@@ -131,7 +136,7 @@ class WatsonxProvider(MLProvider):
                             "input_data": [wxo_input]
                         }
                 elif "values" in wxo_input:
-                    # Already in correct format
+                    # Only values present
                     scoring_payload = {
                         "input_data": [wxo_input]
                     }
