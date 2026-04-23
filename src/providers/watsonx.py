@@ -236,15 +236,18 @@ class WatsonxProvider(MLProvider):
                     # If it's already a list of dicts with fields/values, use as-is
                     if isinstance(input_data[0], dict) and ("fields" in input_data[0] or "values" in input_data[0]):
                         scoring_payload = {"input_data": input_data}
+                        if parameters:
+                            scoring_payload["parameters"] = parameters
                     else:
                         # Otherwise wrap it
                         scoring_payload = {"input_data": [input_data]}
+                        if parameters:
+                            scoring_payload["parameters"] = parameters
                 else:
                     # Single item, wrap it
                     scoring_payload = {"input_data": [input_data]}
-                
-                if parameters:
-                    scoring_payload["parameters"] = parameters
+                    if parameters:
+                        scoring_payload["parameters"] = parameters
             
             # Make prediction
             logger.info(f"Calling watsonx.ai with payload: {scoring_payload}")

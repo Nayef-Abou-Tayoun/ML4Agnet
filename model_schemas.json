@@ -1,0 +1,21 @@
+{
+  "019db7a0-c668-70a0-8a32-6dcc5a1041df": {
+    "model_id": "019db7a0-c668-70a0-8a32-6dcc5a1041df",
+    "model_name": "demand-forecasting-ml",
+    "fields": [
+      {
+        "name": "test_1",
+        "type": "float",
+        "required": true,
+        "description": ""
+      },
+      {
+        "name": "test3",
+        "type": "float",
+        "required": true,
+        "description": ""
+      }
+    ],
+    "updated_at": "2026-04-23T16:32:56.734912"
+  }
+}
