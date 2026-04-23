@@ -54,46 +54,46 @@ class ModelMetadata:
     def to_mcp_tool_schema(self) -> Dict[str, Any]:
         """Convert model metadata to MCP tool schema.
         
-        Exposes each input field directly at the top level so agents like WxO
-        can see individual parameters with their types (string, number, etc.).
+        Accepts the full watsonx.ai input_data structure directly.
         """
-        # Start with the input schema properties (flattened)
-        properties = {}
-        required_fields = []
-        
-        # If input_schema has a 'fields' property (watsonx format), extract field definitions
-        if "fields" in self.input_schema:
-            fields_def = self.input_schema["fields"]
-            if isinstance(fields_def, dict) and fields_def.get("type") == "array":
-                # This is a generic array schema - create individual field parameters
-                # For now, we'll create a generic 'values' parameter
-                properties["values"] = {
-                    "type": "array",
-                    "description": "Input values for prediction (array of numbers or strings)",
-                    "items": {
-                        "oneOf": [
-                            {"type": "number"},
-                            {"type": "string"}
-                        ]
-                    }
+        properties = {
+            "input_data": {
+                "type": "array",
+                "description": "Array of input data objects with fields and values",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "fields": {
+                            "type": "array",
+                            "description": "Array of field names",
+                            "items": {"type": "string"}
+                        },
+                        "values": {
+                            "type": "array",
+                            "description": "Array of value arrays (one per row)",
+                            "items": {
+                                "type": "array",
+                                "items": {
+                                    "oneOf": [
+                                        {"type": "number"},
+                                        {"type": "string"}
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "required": ["fields", "values"]
                 }
-                required_fields.append("values")
-            else:
-                # Direct field definitions
-                properties.update(self.input_schema)
-        else:
-            # Use input_schema properties directly
-            properties.update(self.input_schema)
-        
-        # Add optional parameters field
-        properties["parameters"] = {
-            "type": "object",
-            "description": "Optional inference parameters",
-            "properties": {
-                "timeout": {
-                    "type": "integer",
-                    "description": "Request timeout in seconds",
-                    "default": 30
+            },
+            "parameters": {
+                "type": "object",
+                "description": "Optional inference parameters",
+                "properties": {
+                    "timeout": {
+                        "type": "integer",
+                        "description": "Request timeout in seconds",
+                        "default": 30
+                    }
                 }
             }
         }
@@ -104,7 +104,7 @@ class ModelMetadata:
             "inputSchema": {
                 "type": "object",
                 "properties": properties,
-                "required": required_fields if required_fields else []
+                "required": ["input_data"]
             }
         }
 

@@ -66,22 +66,23 @@ async def execute_tool(
             # Extract parameters (if present)
             parameters = arguments.get("parameters")
             
-            # Reconstruct input_data from flattened arguments
-            # Remove 'parameters' from arguments to get just the input fields
-            input_data = {k: v for k, v in arguments.items() if k != "parameters"}
+            # The arguments should now contain input_data directly
+            input_data = arguments.get("input_data", arguments)
             
-            # If there's a 'values' field, wrap it properly for watsonx
-            if "values" in input_data and len(input_data) == 1:
-                values = input_data["values"]
-                # watsonx expects list(list), so if we have a single list, wrap it
-                if isinstance(values, list) and len(values) > 0:
-                    # Check if it's already list(list) or just list
-                    if not isinstance(values[0], list):
-                        # Single row - wrap it: [1129, 0] -> [[1129, 0]]
-                        values = [values]
-                input_data = {"values": values}
+            # If input_data is not present, use arguments as-is (backward compatibility)
+            if input_data == arguments and "input_data" not in arguments:
+                # Old format: try to reconstruct
+                input_data = {k: v for k, v in arguments.items() if k != "parameters"}
+                
+                # If there's a 'values' field, wrap it properly for watsonx
+                if "values" in input_data and len(input_data) == 1:
+                    values = input_data["values"]
+                    if isinstance(values, list) and len(values) > 0:
+                        if not isinstance(values[0], list):
+                            values = [values]
+                    input_data = {"values": values}
             
-            logger.debug(f"Reconstructed input_data: {input_data}")
+            logger.debug(f"Input data for prediction: {input_data}")
             
             # Make prediction
             try:

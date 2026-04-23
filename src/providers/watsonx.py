@@ -148,8 +148,16 @@ class WatsonxProvider(MLProvider):
                 wxo_input = input_data["input_data"]
                 wxo_params = input_data.get("parameters", {})
                 
+                # Check if wxo_input is already a list (correct watsonx format)
+                if isinstance(wxo_input, list):
+                    # Already in correct format: [{"fields": [...], "values": [...]}]
+                    scoring_payload = {"input_data": wxo_input}
+                    if parameters:
+                        scoring_payload["parameters"] = parameters
+                    elif wxo_params:
+                        scoring_payload["parameters"] = wxo_params
                 # Check if already in correct watsonx.ai format (both fields and values present)
-                if "fields" in wxo_input and "values" in wxo_input:
+                elif "fields" in wxo_input and "values" in wxo_input:
                     # Already in correct watsonx.ai format
                     # Convert any string numbers to numeric types
                     values = convert_values_to_numeric(wxo_input["values"])
@@ -223,10 +231,17 @@ class WatsonxProvider(MLProvider):
                 elif wxo_params:
                     scoring_payload["parameters"] = wxo_params
             else:
-                # Direct format: just the data
-                scoring_payload = {
-                    "input_data": [input_data]
-                }
+                # Direct format: check if input_data is already a list
+                if isinstance(input_data, list) and len(input_data) > 0:
+                    # If it's already a list of dicts with fields/values, use as-is
+                    if isinstance(input_data[0], dict) and ("fields" in input_data[0] or "values" in input_data[0]):
+                        scoring_payload = {"input_data": input_data}
+                    else:
+                        # Otherwise wrap it
+                        scoring_payload = {"input_data": [input_data]}
+                else:
+                    # Single item, wrap it
+                    scoring_payload = {"input_data": [input_data]}
                 
                 if parameters:
                     scoring_payload["parameters"] = parameters
