@@ -456,7 +456,18 @@ async def handle_mcp_tool_call(request_id: Any, params: Dict[str, Any]) -> Dict[
         }
     
     try:
+        logger.info(f"Calling predict for model {model.id} with arguments: {arguments}")
         result = await provider.predict(model.id, arguments)
+        
+        if result is None:
+            logger.error(f"Prediction returned None for model {model.id}")
+            return {
+                "jsonrpc": "2.0",
+                "error": {"code": -32603, "message": "Prediction returned None - check server logs"},
+                "id": request_id
+            }
+        
+        logger.info(f"Prediction successful for model {model.id}")
         return {
             "jsonrpc": "2.0",
             "result": {
@@ -465,7 +476,7 @@ async def handle_mcp_tool_call(request_id: Any, params: Dict[str, Any]) -> Dict[
             "id": request_id
         }
     except Exception as e:
-        logger.error(f"Prediction error: {e}", exc_info=True)
+        logger.error(f"Prediction error for model {model.id}: {e}", exc_info=True)
         return {
             "jsonrpc": "2.0",
             "error": {"code": -32603, "message": f"Prediction failed: {str(e)}"},

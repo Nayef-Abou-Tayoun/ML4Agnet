@@ -161,7 +161,13 @@ class WatsonxProvider(MLProvider):
                     scoring_payload["parameters"] = parameters
             
             # Make prediction
+            logger.info(f"Calling watsonx.ai with payload: {scoring_payload}")
             result = deployments.score(model_id, scoring_payload)
+            logger.info(f"watsonx.ai response: {result}")
+            
+            if result is None:
+                logger.error("watsonx.ai returned None")
+                raise ValueError("watsonx.ai API returned None")
             
             return {
                 "predictions": result.get("predictions", []),
