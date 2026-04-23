@@ -41,7 +41,7 @@ async def execute_tool(
     
     Args:
         tool_name: Name of the tool to execute (format: provider_model_name)
-        arguments: Tool arguments containing input_data and optional parameters
+        arguments: Tool arguments with flattened input fields and optional parameters
         registry: Model registry instance
         
     Returns:
@@ -51,6 +51,7 @@ async def execute_tool(
         ValueError: If tool/model not found
     """
     logger.info(f"Executing tool: {tool_name}")
+    logger.debug(f"Tool arguments: {arguments}")
     
     # Get all models
     models = await registry.list_all_models()
@@ -62,9 +63,19 @@ async def execute_tool(
         if tool_name == expected_tool_name:
             logger.info(f"Found matching model: {model.name} (ID: {model.id})")
             
-            # Extract arguments
-            input_data = arguments.get("input_data", {})
+            # Extract parameters (if present)
             parameters = arguments.get("parameters")
+            
+            # Reconstruct input_data from flattened arguments
+            # Remove 'parameters' from arguments to get just the input fields
+            input_data = {k: v for k, v in arguments.items() if k != "parameters"}
+            
+            # If there's a 'values' field, use it directly (watsonx format)
+            if "values" in input_data and len(input_data) == 1:
+                # Single 'values' field - this is the array format
+                input_data = {"values": input_data["values"]}
+            
+            logger.debug(f"Reconstructed input_data: {input_data}")
             
             # Make prediction
             try:
